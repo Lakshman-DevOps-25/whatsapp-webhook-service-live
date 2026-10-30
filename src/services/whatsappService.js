@@ -11,11 +11,6 @@ exports.resolveMedia = async (mediaId) => {
   return data;
 };
 
-exports.downloadMedia = async (url) => {
-  logger.debug({ urlHost: new URL(url).host }, 'Downloading media from temporary Meta URL');
-  return axios.get(url, { headers, responseType: 'arraybuffer', timeout: 60000, maxContentLength: 100 * 1024 * 1024 });
-};
-
 exports.sendMessage = async (payload) => {
   logger.debug({ type: payload.type, recipient: payload.to }, 'Sending WhatsApp message');
   const { data } = await axios.post(`${apiRoot}/${config.whatsapp.phoneNumberId}/messages`, {

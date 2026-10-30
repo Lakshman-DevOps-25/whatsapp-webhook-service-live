@@ -1,3 +1,9 @@
+/* TEMPORARILY DISABLED while Azure Blob Storage is unavailable.
+ * Runtime code does not import this service. Inbound media references and
+ * outbound message metadata are persisted in MongoDB without binary uploads.
+ * Remove this block and restore the configuration/dependency to re-enable it.
+ */
+/*
 const { BlobServiceClient } = require('@azure/storage-blob');
 const config = require('../config');
 const logger = require('../utils/logger');
@@ -18,3 +24,4 @@ exports.upload = async ({ messageId, buffer, mimeType, filename }) => {
   await blob.uploadData(buffer, { blobHTTPHeaders: { blobContentType: mimeType || 'application/octet-stream' } });
   return { container: config.azure.container, blobName, url: blob.url, size: buffer.length, mimeType };
 };
+*/

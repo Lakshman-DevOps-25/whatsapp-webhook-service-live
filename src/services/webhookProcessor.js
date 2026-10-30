@@ -1,10 +1,6 @@
 const crypto = require('crypto');
-const Message = require('../models/Message');
 const WebhookEvent = require('../models/WebhookEvent');
-const config = require('../config');
 const logger = require('../utils/logger');
-const whatsapp = require('./whatsappService');
-const azure = require('./azureStorageService');
 const messages = require('./messageService');
 
 const mediaTypes = new Set(['image', 'video', 'audio', 'document', 'sticker']);
@@ -16,33 +12,17 @@ async function processMedia(record, source) {
     logger.error({ messageId: record.waMessageId, type: record.messageType, direction: record.direction }, 'Media payload has no media ID');
     return;
   }
-  const current = await Message.findOne({ waMessageId: record.waMessageId }).lean();
-  if (current?.media?.status === 'uploaded') return;
-  await messages.updateMedia(record.waMessageId, { status: 'pending', attempts: 0 });
-  for (let attempt = 1; attempt <= config.media.maxAttempts; attempt += 1) {
-    try {
-      logger.debug({ messageId: record.waMessageId, type: record.messageType, direction: record.direction, attempt }, 'Starting media retrieval attempt');
-      const metadata = await whatsapp.resolveMedia(mediaId);
-      const download = await whatsapp.downloadMedia(metadata.url);
-      const mimeType = metadata.mime_type || source.mime_type || download.headers['content-type'] || 'application/octet-stream';
-      const filename = source.filename || (record.messageType === 'document' ? 'document' : `${mediaId}.${mimeType.split('/')[1] || 'bin'}`);
-      const uploaded = await azure.upload({ messageId: record.waMessageId, buffer: Buffer.from(download.data), mimeType, filename });
-      await messages.updateMedia(record.waMessageId, {
-        status: 'uploaded', ...uploaded, originalFilename: source.filename || undefined, attempts: attempt
-      });
-      logger.info({ messageId: record.waMessageId, type: record.messageType, direction: record.direction, attempt, size: uploaded.size }, 'Media stored successfully');
-      return;
-    } catch (error) {
-      const reason = error.response?.status ? `HTTP ${error.response.status}: ${error.message}` : error.message;
-      logger.warn({ messageId: record.waMessageId, type: record.messageType, direction: record.direction, attempt, maxAttempts: config.media.maxAttempts, error: reason }, 'Media retrieval/upload failed');
-      if (attempt < config.media.maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, config.media.retryBaseMs * (2 ** (attempt - 1))));
-      } else {
-        await messages.updateMedia(record.waMessageId, { status: 'failed', failureReason: reason, attempts: attempt, mimeType: source.mime_type, originalFilename: source.filename });
-        logger.error({ messageId: record.waMessageId, type: record.messageType, direction: record.direction, attempts: attempt, error: reason }, 'Media marked failed after retries');
-      }
-    }
-  }
+  // Azure is temporarily disabled; keep the media reference and available metadata in MongoDB.
+  const metadata = {
+    status: 'metadata_only', mediaId,
+    mimeType: source.mime_type,
+    size: source.file_size,
+    originalFilename: source.filename,
+    failureReason: 'Binary storage disabled while Azure Blob Storage is unavailable',
+    attempts: 0
+  };
+  await messages.updateMedia(record.waMessageId, metadata);
+  logger.info({ messageId: record.waMessageId, type: record.messageType, direction: record.direction, mediaId }, 'Media reference stored in MongoDB; binary storage is disabled');
 }
 
 async function processPayload(payload) {

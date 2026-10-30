@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 const mediaSchema = new mongoose.Schema({
-  status: { type: String, enum: ['pending', 'uploaded', 'failed'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'uploaded', 'metadata_only', 'failed'], default: 'pending' },
+  mediaId: String,
   container: String,
   blobName: String,
   url: String,
