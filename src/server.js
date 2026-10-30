@@ -6,10 +6,12 @@ const processor = require('./services/webhookProcessor');
 const azure = require('./services/azureStorageService');
 const Message = require('./models/Message');
 const WebhookEvent = require('./models/WebhookEvent');
+const messageIndexes = require('./services/messageIndexService');
 
 async function start() {
   logger.debug({ port: config.port }, 'Starting service initialization');
   await database.connect();
+  await messageIndexes.ensureUniqueWhatsAppMessageId();
   await Promise.all([Message.init(), WebhookEvent.init()]);
   await azure.ensureContainer();
   const server = app.listen(config.port, () => logger.info({ port: config.port }, 'WhatsApp webhook service listening'));

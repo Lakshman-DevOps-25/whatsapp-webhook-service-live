@@ -70,7 +70,7 @@ async function processPayload(payload) {
         logger.debug({ messageId: status.id, status: status.status, direction: 'outbound' }, 'Classified outbound status event');
         await messages.appendStatus({
           id: status.id, status: status.status, timestamp: status.timestamp,
-          recipientId: status.recipient_id, errors: status.errors, rawPayload: status
+          recipientId: status.recipient_id, errorDetails: status.errors, rawPayload: status
         });
       }
     }

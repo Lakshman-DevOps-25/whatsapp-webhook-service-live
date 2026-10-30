@@ -14,7 +14,7 @@ const mediaSchema = new mongoose.Schema({
 }, { _id: false });
 
 const messageSchema = new mongoose.Schema({
-  waMessageId: { type: String, required: true, unique: true, index: true },
+  waMessageId: { type: String, required: true },
   direction: { type: String, enum: ['inbound', 'outbound', 'unknown'], required: true },
   sender: { type: String, default: null },
   recipient: { type: String, default: null },
@@ -23,8 +23,10 @@ const messageSchema = new mongoose.Schema({
   textBody: { type: String, default: null },
   rawPayload: { type: mongoose.Schema.Types.Mixed, required: true },
   media: { type: mediaSchema, default: undefined },
-  statuses: [{ status: String, timestamp: Date, recipientId: String, errors: mongoose.Schema.Types.Mixed, rawPayload: mongoose.Schema.Types.Mixed }]
+  statuses: [{ status: String, timestamp: Date, recipientId: String, errorDetails: mongoose.Schema.Types.Mixed, rawPayload: mongoose.Schema.Types.Mixed }]
 }, { timestamps: true, minimize: false });
+
+messageSchema.index({ waMessageId: 1 }, { unique: true, name: 'waMessageId_unique' });
 
 messageSchema.pre('save', function logSave(next) {
   logger.debug({ messageId: this.waMessageId, type: this.messageType, direction: this.direction }, 'Saving message model');

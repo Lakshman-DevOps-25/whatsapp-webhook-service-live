@@ -19,13 +19,13 @@ exports.persistMessage = async (record) => {
   }
 };
 
-exports.appendStatus = async ({ id, status, timestamp, recipientId, errors, rawPayload }) => {
+exports.appendStatus = async ({ id, status, timestamp, recipientId, errorDetails, rawPayload }) => {
   logger.debug({ messageId: id, status, direction: 'outbound' }, 'Persisting WhatsApp status event');
   await Message.findOneAndUpdate(
     { waMessageId: id },
     {
       $setOnInsert: { waMessageId: id, direction: 'outbound', messageType: 'unknown', timestamp: new Date(), rawPayload },
-      $push: { statuses: { status, timestamp: timestamp ? new Date(Number(timestamp) * 1000) : new Date(), recipientId, errors, rawPayload } }
+      $push: { statuses: { status, timestamp: timestamp ? new Date(Number(timestamp) * 1000) : new Date(), recipientId, errorDetails, rawPayload } }
     },
     { upsert: true, setDefaultsOnInsert: true }
   );

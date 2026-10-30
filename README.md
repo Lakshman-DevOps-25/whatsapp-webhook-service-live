@@ -13,4 +13,6 @@ Node.js MVC service for WhatsApp Cloud API webhooks, MongoDB message/audit recor
 
 Messages and media metadata are stored in MongoDB; binary content is stored only in Azure. A webhook inbox is persisted before returning 200 and replayed after process restart. Inbound media processing retries transient failures, and its final processing state/error is retained on the parent message. Outbound media upload-by-URL uses Meta's Cloud API; inbound media is resolved from Meta then downloaded with authorization.
 
+At startup, the service migrates a legacy non-unique `waMessageId` index to the unique index required for idempotency. It does not delete duplicate message documents: if duplicates exist, startup stops with a message asking you to deduplicate them before restarting.
+
 The Meta webhook supplies inbound messages and status updates, but not the complete outbound message body. To capture full outbound records, send messages through this service (or integrate the exported `sendMessage` service in your sender).
