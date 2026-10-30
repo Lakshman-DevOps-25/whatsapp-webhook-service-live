@@ -3,6 +3,35 @@ const logger = require('../utils/logger');
 
 const indexName = 'waMessageId_unique';
 const archive = Message.db.collection('message_duplicate_archive');
+const orphanArchive = Message.db.collection('message_orphan_archive');
+
+async function archiveOrphanMessages() {
+  const filter = { $or: [{ waMessageId: { $exists: false } }, { waMessageId: null }, { waMessageId: '' }] };
+  const cursor = Message.collection.find(filter, { batchSize: 100 });
+  let archivedCount = 0;
+  let ids = [];
+
+  async function deleteArchivedBatch() {
+    if (!ids.length) return;
+    await Message.collection.deleteMany({ _id: { $in: ids } });
+    archivedCount += ids.length;
+    ids = [];
+  }
+
+  for await (const document of cursor) {
+    await orphanArchive.updateOne(
+      { _id: document._id },
+      { $setOnInsert: { archivedAt: new Date(), reason: 'missing_waMessageId', document } },
+      { upsert: true }
+    );
+    ids.push(document._id);
+    if (ids.length >= 100) await deleteArchivedBatch();
+  }
+  await deleteArchivedBatch();
+  if (archivedCount) {
+    logger.warn({ archivedCount, archiveCollection: 'message_orphan_archive' }, 'Archived legacy message records without WhatsApp message IDs');
+  }
+}
 
 function recordScore(record) {
   return (record.messageType && record.messageType !== 'unknown' ? 100 : 0)
@@ -53,9 +82,6 @@ async function archiveAndMergeDuplicateMessages() {
   ]).allowDiskUse(true);
 
   if (duplicateGroups.length === 0) return;
-  if (duplicateGroups.some(group => group._id == null)) {
-    throw new Error('MongoDB contains multiple message records without waMessageId values. These cannot be safely merged; repair or remove the orphan records before restarting.');
-  }
   logger.warn({ groups: duplicateGroups.length, archiveCollection: 'message_duplicate_archive' }, 'Merging duplicate WhatsApp message records');
 
   for (const group of duplicateGroups) {
@@ -82,6 +108,7 @@ async function archiveAndMergeDuplicateMessages() {
 }
 
 exports.ensureUniqueWhatsAppMessageId = async () => {
+  await archiveOrphanMessages();
   let indexes = [];
   try {
     indexes = await Message.collection.indexes();
