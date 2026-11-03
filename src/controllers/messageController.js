@@ -39,7 +39,8 @@ exports.send = async (req, res) => {
       fbtraceId: providerError?.fbtrace_id,
       error: message
     }, 'WhatsApp Cloud API rejected or failed the send request');
-    return responses.error(res, 502, message);
+    const status = Number(providerError?.code) === 131070 ? 409 : 502;
+    return responses.error(res, status, message);
   }
 
   const waMessageId = result.messages?.[0]?.id;
