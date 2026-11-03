@@ -4,6 +4,10 @@ const logger = require('../utils/logger');
 const router = express.Router();
 
 router.get('/webhook', (req, res) => {
+  logger.debug({ path: req.path, method: req.method }, 'Webhook route received verification request');
+  controller.verify(req, res);
+});
+router.post('/webhook', (req, res, next) => {
   const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
   logger.debug({ verify_token: VERIFY_TOKEN }, 'Webhook verify token loaded from environment');
 
@@ -12,10 +16,6 @@ router.get('/webhook', (req, res) => {
 
       return res.status(200).type('text/plain').send(challenge);
   }
-  logger.debug({ path: req.path, method: req.method }, 'Webhook route received verification request');
-  controller.verify(req, res);
-});
-router.post('/webhook', (req, res, next) => {
   logger.debug({ path: req.path, method: req.method }, 'Webhook route received event');
   controller.receive(req, res).catch(next);
 });
