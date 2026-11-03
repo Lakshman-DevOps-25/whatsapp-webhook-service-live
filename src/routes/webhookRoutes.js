@@ -5,6 +5,7 @@ const router = express.Router();
 
 router.get('/webhook', (req, res) => {
   const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+  logger.debug({ verify_token: VERIFY_TOKEN }, 'Webhook verify token loaded from environment');
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('WhatsApp webhook verified successfully');
