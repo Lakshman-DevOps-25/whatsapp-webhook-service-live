@@ -18,6 +18,8 @@ exports.receive = async (req, res) => {
   const expected = `sha256=${crypto.createHmac('sha256', config.whatsapp.appSecret).update(req.rawBody || Buffer.alloc(0)).digest('hex')}`;
   const suppliedBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
+  console.log('Supplied Signature:', signature);
+  console.log('Expected Signature:', expected);
   const valid = suppliedBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(suppliedBuffer, expectedBuffer);
   logger.debug({ valid, bytes: req.rawBody?.length || 0 }, 'Webhook signature verification completed');
   if (!valid) return res.status(401).send('Invalid signature');
