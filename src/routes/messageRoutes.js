@@ -5,6 +5,6 @@ const router = express.Router();
 
 router.post('/messages', (req, res, next) => {
   logger.debug({ path: req.path, method: req.method, type: req.body?.type || 'text' }, 'Message route received send request');
-  controller.send(req, res, next);
+  controller.send(req, res).catch(next);
 });
 module.exports = router;
