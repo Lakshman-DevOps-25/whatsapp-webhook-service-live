@@ -24,8 +24,10 @@ exports.receive = async (req, res) => {
 
   try {
     const event = await processor.enqueuePayload(req.body, req.rawBody);
+    if (!event) throw new Error('Webhook inbox upsert returned no event document');
+    const shouldProcess = !event.processedAt;
     res.sendStatus(200);
-    if (!event.processedAt) setImmediate(() => processor.processEvent(event._id));
+    if (shouldProcess) setImmediate(() => processor.processEvent(event._id));
   } catch (error) {
     logger.error({
       error: error.message,
