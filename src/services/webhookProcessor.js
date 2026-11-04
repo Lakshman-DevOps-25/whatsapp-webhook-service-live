@@ -85,7 +85,12 @@ exports.enqueuePayload = async (payload, rawBody) => {
   } catch (error) {
     if (error.code !== 11000) throw error;
     event = await WebhookEvent.findOne({ eventKey });
+    if (!event) {
+      logger.error({ eventKey, mongoCode: error.code, keyPattern: error.keyPattern }, 'Webhook inbox upsert hit a duplicate key but no matching event was found');
+      throw error;
+    }
   }
+  if (!event) throw new Error('MongoDB webhook inbox upsert returned no event document');
   logger.debug({ eventKey, duplicate: Boolean(event.processedAt) }, 'Webhook payload persisted to inbox');
   return event;
 };

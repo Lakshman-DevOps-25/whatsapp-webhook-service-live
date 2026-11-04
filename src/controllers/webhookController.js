@@ -27,7 +27,12 @@ exports.receive = async (req, res) => {
     res.sendStatus(200);
     if (!event.processedAt) setImmediate(() => processor.processEvent(event._id));
   } catch (error) {
-    logger.error({ error: error.message }, 'Could not persist signed webhook event');
+    logger.error({
+      error: error.message,
+      mongoCode: error.code,
+      mongoCodeName: error.codeName,
+      keyPattern: error.keyPattern
+    }, 'Could not persist signed webhook event');
     res.sendStatus(503);
   }
 };
