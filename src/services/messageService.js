@@ -14,7 +14,14 @@ exports.persistMessage = async (record) => {
     );
   } catch (error) {
     if (error.code !== 11000) throw error;
-    logger.debug({ messageId: waMessageId, type: messageType, direction }, 'Concurrent duplicate message insert resolved');
+    logger.debug({ messageId: waMessageId, type: messageType, direction }, 'Concurrent duplicate message insert detected; checking for status-first placeholder');
+    const placeholder = await Message.findOneAndUpdate(
+      { waMessageId, messageType: 'unknown' }, { $set: record }, { new: true }
+    );
+    if (placeholder) {
+      logger.info({ messageId: waMessageId, type: messageType, direction }, 'Status-first placeholder enriched with outbound message data');
+      return placeholder;
+    }
     return Message.findOne({ waMessageId });
   }
 };
@@ -24,7 +31,7 @@ exports.appendStatus = async ({ id, status, timestamp, recipientId, errorDetails
   await Message.findOneAndUpdate(
     { waMessageId: id },
     {
-      $setOnInsert: { waMessageId: id, direction: 'outbound', messageType: 'unknown', timestamp: new Date(), rawPayload },
+      $setOnInsert: { waMessageId: id, direction: 'outbound', messageType: 'unknown', recipient: recipientId || null, timestamp: new Date(), rawPayload },
       $push: { statuses: { status, timestamp: timestamp ? new Date(Number(timestamp) * 1000) : new Date(), recipientId, errorDetails, rawPayload } }
     },
     { upsert: true, setDefaultsOnInsert: true }
