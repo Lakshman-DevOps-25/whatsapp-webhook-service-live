@@ -80,14 +80,18 @@ exports.enqueuePayload = async (payload, rawBody) => {
   let event;
   try {
     event = await WebhookEvent.findOneAndUpdate(
-      { eventKey }, { $setOnInsert: { eventKey, payload } }, { upsert: true, new: true, setDefaultsOnInsert: true }
+      { eventKey }, { $setOnInsert: { eventKey, eventHash: eventKey, payload } }, { upsert: true, new: true, setDefaultsOnInsert: true }
     );
   } catch (error) {
     if (error.code !== 11000) throw error;
-    event = await WebhookEvent.findOne({ eventKey });
+    event = await WebhookEvent.findOne({ $or: [{ eventKey }, { eventHash: eventKey }] }).select('+eventHash');
     if (!event) {
       logger.error({ eventKey, mongoCode: error.code, keyPattern: error.keyPattern }, 'Webhook inbox upsert hit a duplicate key but no matching event was found');
       throw error;
+    }
+    if (!event.eventKey) {
+      await WebhookEvent.updateOne({ _id: event._id }, { $set: { eventKey } });
+      event.eventKey = eventKey;
     }
   }
   if (!event) throw new Error('MongoDB webhook inbox upsert returned no event document');

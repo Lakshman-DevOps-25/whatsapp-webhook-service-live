@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 
 const schema = new mongoose.Schema({
   eventKey: { type: String, unique: true, required: true },
+  eventHash: { type: String, select: false },
   payload: { type: mongoose.Schema.Types.Mixed, required: true },
   processedAt: { type: Date, default: null },
   claimUntil: { type: Date, default: null },
