@@ -8,14 +8,6 @@ router.get('/webhook', (req, res) => {
   controller.verify(req, res);
 });
 router.post('/webhook', (req, res, next) => {
-  const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
-  logger.debug({ verify_token: VERIFY_TOKEN }, 'Webhook verify token loaded from environment');
-
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('WhatsApp webhook verified successfully');
-
-      return res.status(200).type('text/plain').send(challenge);
-  }
   logger.debug({ path: req.path, method: req.method }, 'Webhook route received event');
   controller.receive(req, res).catch(next);
 });
