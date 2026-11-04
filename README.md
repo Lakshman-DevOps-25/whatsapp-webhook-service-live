@@ -15,4 +15,6 @@ Messages, status events, raw webhook payloads, and available media metadata are 
 
 At startup, the service migrates a legacy non-unique `waMessageId` index to the unique index required for idempotency. Duplicate message documents are merged (keeping the richest message/media data and deduplicating status entries); removed duplicates are preserved in the `message_duplicate_archive` collection before deletion. Legacy records with no WhatsApp message ID are preserved in `message_orphan_archive` and removed from the active messages collection, since they cannot be keyed idempotently.
 
+The startup migration also converts legacy webhook inbox `eventHash` values to `eventKey` and removes the obsolete `eventHash` index before creating the current inbox index.
+
 The Meta webhook supplies inbound messages and status updates, but not the complete outbound message body. To capture full outbound records, send messages through this service (or integrate the exported `sendMessage` service in your sender).

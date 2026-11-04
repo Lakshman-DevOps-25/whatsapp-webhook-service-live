@@ -1,9 +1,43 @@
 const Message = require('../models/Message');
+const WebhookEvent = require('../models/WebhookEvent');
 const logger = require('../utils/logger');
 
 const indexName = 'waMessageId_unique';
 const archive = Message.db.collection('message_duplicate_archive');
 const orphanArchive = Message.db.collection('message_orphan_archive');
+
+exports.migrateLegacyWebhookEventHashIndex = async () => {
+  let indexes = [];
+  try {
+    indexes = await WebhookEvent.collection.indexes();
+  } catch (error) {
+    if (error.code !== 26 && error.codeName !== 'NamespaceNotFound') throw error;
+    return;
+  }
+
+  const legacyIndexes = indexes.filter(index =>
+    Object.keys(index.key || {}).length === 1 && index.key.eventHash === 1
+  );
+  if (legacyIndexes.length === 0) return;
+
+  const cursor = WebhookEvent.collection.find({ $or: [{ eventKey: { $exists: false } }, { eventKey: null }] }, { batchSize: 100 });
+  let migrated = 0;
+  for await (const document of cursor) {
+    let eventKey = typeof document.eventHash === 'string' && document.eventHash
+      ? document.eventHash
+      : `legacy:${document._id.toString()}`;
+    const collision = await WebhookEvent.collection.findOne({ eventKey, _id: { $ne: document._id } }, { projection: { _id: 1 } });
+    if (collision) eventKey = `legacy:${document._id.toString()}`;
+    await WebhookEvent.collection.updateOne({ _id: document._id }, { $set: { eventKey } });
+    migrated += 1;
+  }
+
+  for (const index of legacyIndexes) {
+    logger.debug({ index: index.name }, 'Dropping obsolete webhook event hash index');
+    await WebhookEvent.collection.dropIndex(index.name);
+  }
+  logger.info({ migrated, indexes: legacyIndexes.map(index => index.name) }, 'Legacy webhook event index migration completed');
+};
 
 async function archiveOrphanMessages() {
   const filter = { $or: [{ waMessageId: { $exists: false } }, { waMessageId: null }, { waMessageId: '' }] };

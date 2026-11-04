@@ -11,6 +11,7 @@ async function start() {
   logger.debug({ port: config.port }, 'Starting service initialization');
   await database.connect();
   await messageIndexes.ensureUniqueWhatsAppMessageId();
+  await messageIndexes.migrateLegacyWebhookEventHashIndex();
   await Promise.all([Message.init(), WebhookEvent.init()]);
   const server = app.listen(config.port, () => logger.info({ port: config.port }, 'WhatsApp webhook service listening'));
   await processor.processPending();
